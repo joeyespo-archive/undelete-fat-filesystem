@@ -21,7 +21,7 @@
             >
                 <Config
                     Name = "Debug"
-                    AllowUnsafeBlocks = "false"
+                    AllowUnsafeBlocks = "true"
                     BaseAddress = "285212672"
                     CheckForOverflowUnderflow = "false"
                     ConfigurationOverrideFile = ""
@@ -137,6 +137,11 @@
                 />
                 <File
                     RelPath = "StreamActivator.cs"
+                    SubType = "Code"
+                    BuildAction = "Compile"
+                />
+                <File
+                    RelPath = "Win32FileStream.cs"
                     SubType = "Code"
                     BuildAction = "Compile"
                 />

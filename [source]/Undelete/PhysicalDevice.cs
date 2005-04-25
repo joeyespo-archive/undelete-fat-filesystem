@@ -1,11 +1,17 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Collections;
+using System.Windows.Forms;
 
 namespace Undelete
 {
   public class PhysicalDevice
   {
+    [DllImport("kernel32")]
+    static extern IntPtr CreateFile (string filename, [MarshalAs(UnmanagedType.U4)]FileAccess fileaccess, [MarshalAs(UnmanagedType.U4)]FileShare fileshare, int securityattributes, [MarshalAs(UnmanagedType.U4)]FileMode creationdisposition, int flags, IntPtr template);
+    static readonly int FILE_FLAG_NO_BUFFERING    = 0x20000000;
+    
     public static readonly int SectorSize = 512;
     
     private Stream deviceStream;
@@ -19,12 +25,20 @@ namespace Undelete
     
     public static PhysicalDevice FromPhysicalDrive (int deviceNum)
     {
-      string physicalPath = @"\\.\PhysicalDrive" + deviceNum.ToString();
+      string physicalPath = @"\\.\PHYSICALDRIVE" + deviceNum.ToString();
       Stream stream = null;
       try
-      { stream = File.Open(physicalPath, FileMode.Open, FileAccess.Read, FileShare.Read); }
+      {
+        // Wordaround for: File.Open(physicalPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        IntPtr handle = CreateFile(physicalPath, FileAccess.Read, FileShare.Read, 0, FileMode.Open, FILE_FLAG_NO_BUFFERING, IntPtr.Zero);
+        if ((uint)handle != 0xFFFFFFFF) stream = new Win32FileStream(handle, FileAccess.ReadWrite, true);
+      }
       catch (FileNotFoundException) {}
+      catch (IOException e) { MessageBox.Show(e.Message, "Undelete", MessageBoxButtons.OK, MessageBoxIcon.Exclamation); }
       if (stream == null) return null;
+      
+      try { stream.ReadByte(); }
+      catch (IOException) { return new PhysicalDevice(null); }
       return new PhysicalDevice(stream);
     }
     
@@ -36,6 +50,7 @@ namespace Undelete
     
     public void Refresh ()
     {
+      if (deviceStream == null) return;
       logicalDevices = null;
       ArrayList logicalDeviceList = new ArrayList();
       deviceStream.Seek(0, SeekOrigin.Begin);

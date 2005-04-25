@@ -443,11 +443,12 @@ namespace Undelete
     
     private void RefreshDevices ()
     {
-      tvwDevices.Nodes.Clear();
+      CloseDevices();
       for (int i = 0;; i++)
       {
         PhysicalDevice device = PhysicalDevice.FromPhysicalDrive(i);
         if (device == null) break;
+        if (device.DeviceStream == null) continue;  // Skip empty streams
         TreeNode physicalDeviceNode = new TreeNode("Disk " + i.ToString());
         physicalDeviceNode.Tag = device;
         RefreshVolumes(physicalDeviceNode);
@@ -468,6 +469,17 @@ namespace Undelete
         volumeNode.ForeColor = (( volume.Partition.IsFAT )?( Color.MediumSeaGreen ):( Color.Gray ));
         volumeNode.Tag = volume;
         physicalDeviceNode.Nodes.Add(volumeNode);
+      }
+    }
+    
+    private void CloseDevices ()
+    {
+      tvwDevices.Nodes.Clear();
+      foreach (TreeNode node in tvwDevices.Nodes)
+      {
+        ((PhysicalDevice)node.Tag).DeviceStream.Close();
+        foreach (TreeNode child in node.Nodes)
+          ((LogicalDevice)child.Tag).DeviceStream.Close();
       }
     }
     
@@ -555,7 +567,9 @@ namespace Undelete
       if (fileName[0] == '?') fileName = '!' + (( fileName.Length > 1 )?( fileName.Substring(1) ):( "" ));
       dlgSaveFile.FileName = fileName;
       if (dlgSaveFile.ShowDialog(this) == DialogResult.Cancel) return false;
-      fileManager.SaveFile(file, File.Create(dlgSaveFile.FileName));
+      FileStream fs = File.Create(dlgSaveFile.FileName);
+      fileManager.SaveFile(file, fs);
+      fs.Close();
       return true;
     }
     
